@@ -1,0 +1,49 @@
+name: Iltero Pipeline
+
+on:
+  push:
+    branches: [main, develop, staging]
+    paths:
+      - 'infra/stacks/**'
+      - '.github/workflows/iltero.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infra/stacks/**'
+  workflow_dispatch:
+    inputs:
+      stack:
+        description: 'Stack to process (leave empty for all changed)'
+        required: false
+        type: string
+      environment:
+        description: 'Target environment'
+        required: false
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+
+concurrency:
+  group: iltero-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Iltero Pipeline
+        uses: iltero-io/iltero-actions/pipeline@v1
+        with:
+          config_paths: infra/stacks
+          stack: ${{ inputs.stack || '' }}
+          environment: ${{ inputs.environment || '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ILTERO_API_TOKEN: ${{ secrets.ILTERO_API_TOKEN }}
+          ILTERO_REGISTRY_TOKEN: ${{ secrets.ILTERO_REGISTRY_TOKEN }}
