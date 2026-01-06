@@ -67,7 +67,7 @@ permissions:
   id-token: write  # Required for OIDC cloud authentication
 
 concurrency:
-  group: iltero-${{{ github.repository }}}-${{{ github.ref }}}
+  group: iltero-${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -80,11 +80,11 @@ jobs:
     name: Compliance & Evaluation
     runs-on: ubuntu-latest
     outputs:
-      environment: ${{{ steps.pipeline.outputs.environment }}}
-      compliance_passed: ${{{ steps.pipeline.outputs.compliance_passed }}}
-      evaluation_passed: ${{{ steps.pipeline.outputs.evaluation_passed }}}
-      stacks_processed: ${{{ steps.pipeline.outputs.stacks_processed }}}
-      run_id: ${{{ steps.pipeline.outputs.run_id }}}
+      environment: ${{ steps.pipeline.outputs.environment }}
+      compliance_passed: ${{ steps.pipeline.outputs.compliance_passed }}
+      evaluation_passed: ${{ steps.pipeline.outputs.evaluation_passed }}
+      stacks_processed: ${{ steps.pipeline.outputs.stacks_processed }}
+      run_id: ${{ steps.pipeline.outputs.run_id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -93,11 +93,11 @@ jobs:
 
       - name: Validate Required Secrets
         run: |
-          if [ -z "${{{ secrets.ILTERO_API_TOKEN }}}" ]; then
+          if [ -z "${{ secrets.ILTERO_API_TOKEN }}" ]; then
             echo "::error::ILTERO_API_TOKEN secret is not configured. Please add it in Repository Settings → Secrets."
             exit 1
           fi
-          if [ -z "${{{ secrets.ILTERO_REGISTRY_TOKEN }}}" ]; then
+          if [ -z "${{ secrets.ILTERO_REGISTRY_TOKEN }}" ]; then
             echo "::error::ILTERO_REGISTRY_TOKEN secret is not configured. Required for terraform init with private modules."
             exit 1
           fi
@@ -105,20 +105,20 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{{ vars.AWS_ROLE_ARN }}}
-          aws-region: ${{{ vars.AWS_REGION || 'us-east-1' }}}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Iltero Pipeline (Scan & Evaluate)
         id: pipeline
         uses: iltero-io/iltero-actions/pipeline@v1
         with:
           stacks_path: infra/stacks
-          stack: ${{{ github.event.inputs.stack || '' }}}
-          environment: ${{{ github.event.inputs.environment || '' }}}
+          stack: ${{ github.event.inputs.stack || '' }}
+          environment: ${{ github.event.inputs.environment || '' }}
         env:
-          GITHUB_TOKEN: ${{{ secrets.GITHUB_TOKEN }}}
-          ILTERO_API_TOKEN: ${{{ secrets.ILTERO_API_TOKEN }}}
-          ILTERO_REGISTRY_TOKEN: ${{{ secrets.ILTERO_REGISTRY_TOKEN }}}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ILTERO_API_TOKEN: ${{ secrets.ILTERO_API_TOKEN }}
+          ILTERO_REGISTRY_TOKEN: ${{ secrets.ILTERO_REGISTRY_TOKEN }}
 
   # ==========================================================================
   # Job 2: Auto-Deploy (for environments NOT requiring approval)
@@ -142,22 +142,22 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{{ vars.AWS_ROLE_ARN }}}
-          aws-region: ${{{ vars.AWS_REGION || 'us-east-1' }}}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Deploy Infrastructure
         uses: iltero-io/iltero-actions/pipeline@v1
         with:
           stacks_path: infra/stacks
-          stack: ${{{ github.event.inputs.stack || '' }}}
-          environment: ${{{ needs.compliance.outputs.environment }}}
+          stack: ${{ github.event.inputs.stack || '' }}
+          environment: ${{ needs.compliance.outputs.environment }}
           deploy_only: 'true'
-          run_id: ${{{ needs.compliance.outputs.run_id }}}
+          run_id: ${{ needs.compliance.outputs.run_id }}
           verify_authorization: 'true'
         env:
-          GITHUB_TOKEN: ${{{ secrets.GITHUB_TOKEN }}}
-          ILTERO_API_TOKEN: ${{{ secrets.ILTERO_API_TOKEN }}}
-          ILTERO_REGISTRY_TOKEN: ${{{ secrets.ILTERO_REGISTRY_TOKEN }}}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ILTERO_API_TOKEN: ${{ secrets.ILTERO_API_TOKEN }}
+          ILTERO_REGISTRY_TOKEN: ${{ secrets.ILTERO_REGISTRY_TOKEN }}
 
   # ==========================================================================
   # Job: Deploy to Production (requires approval)
@@ -183,19 +183,19 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{{ vars.AWS_ROLE_ARN }}}
-          aws-region: ${{{ vars.AWS_REGION || 'us-east-1' }}}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Deploy to Production
         uses: iltero-io/iltero-actions/pipeline@v1
         with:
           stacks_path: infra/stacks
-          stack: ${{{ github.event.inputs.stack || '' }}}
+          stack: ${{ github.event.inputs.stack || '' }}
           environment: production
           deploy_only: 'true'
-          run_id: ${{{ needs.compliance.outputs.run_id }}}
+          run_id: ${{ needs.compliance.outputs.run_id }}
           verify_authorization: 'true'
         env:
-          GITHUB_TOKEN: ${{{ secrets.GITHUB_TOKEN }}}
-          ILTERO_API_TOKEN: ${{{ secrets.ILTERO_API_TOKEN }}}
-          ILTERO_REGISTRY_TOKEN: ${{{ secrets.ILTERO_REGISTRY_TOKEN }}}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ILTERO_API_TOKEN: ${{ secrets.ILTERO_API_TOKEN }}
+          ILTERO_REGISTRY_TOKEN: ${{ secrets.ILTERO_REGISTRY_TOKEN }}
