@@ -72,12 +72,12 @@ concurrency:
 
 jobs:
   # ==========================================================================
-  # Job 1: Compliance & Evaluation
+  # Compliance Job
   # Runs for all events - validates infrastructure changes
   # Environment is auto-detected from branch via config.yml git_ref mapping
   # ==========================================================================
   compliance:
-    name: Compliance & Evaluation
+    name: Compliance
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.pipeline.outputs.environment }}
@@ -102,15 +102,9 @@ jobs:
             exit 1
           fi
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
-
       - name: Iltero Pipeline (Scan & Evaluate)
         id: pipeline
-        uses: iltero-io/iltero-actions/pipeline@v1
+        uses: ilterohq/iltero-actions@v1
         with:
           stacks_path: infra/stacks
           stack: ${{ github.event.inputs.stack || '' }}
@@ -121,7 +115,7 @@ jobs:
           ILTERO_REGISTRY_TOKEN: ${{ secrets.ILTERO_REGISTRY_TOKEN }}
 
   # ==========================================================================
-  # Job 2: Auto-Deploy (for environments NOT requiring approval)
+  # Auto-Deploy Job (for environments NOT requiring approval)
   # Only runs on push events when compliance passes
   # Uses pipeline action in deploy-only mode with authorization verification
   # ==========================================================================
@@ -131,8 +125,9 @@ jobs:
     if: |
       needs.compliance.outputs.compliance_passed == 'true' &&
       github.event_name == 'push' &&
-      (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging')
+      (needs.compliance.outputs.environment == 'development' || needs.compliance.outputs.environment == 'staging')
     runs-on: ubuntu-latest
+    environment: ${{ needs.compliance.outputs.environment }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -146,7 +141,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Deploy Infrastructure
-        uses: iltero-io/iltero-actions/pipeline@v1
+        uses: ilterohq/iltero-actions@v1
         with:
           stacks_path: infra/stacks
           stack: ${{ github.event.inputs.stack || '' }}
@@ -160,7 +155,7 @@ jobs:
           ILTERO_REGISTRY_TOKEN: ${{ secrets.ILTERO_REGISTRY_TOKEN }}
 
   # ==========================================================================
-  # Job: Deploy to Production (requires approval)
+  # Deploy to Production Job (requires approval)
   # Uses GitHub Environment protection rules for approval gate
   # Backend authorization verification ensures compliance passed
   # ==========================================================================
@@ -170,8 +165,7 @@ jobs:
     if: |
       needs.compliance.outputs.compliance_passed == 'true' &&
       needs.compliance.outputs.environment == 'production' &&
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main'
+      github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -187,7 +181,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Deploy to Production
-        uses: iltero-io/iltero-actions/pipeline@v1
+        uses: ilterohq/iltero-actions@v1
         with:
           stacks_path: infra/stacks
           stack: ${{ github.event.inputs.stack || '' }}
