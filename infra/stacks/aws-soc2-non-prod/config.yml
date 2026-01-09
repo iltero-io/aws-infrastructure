@@ -1,0 +1,140 @@
+# Iltero Stack Configuration
+# This file drives CI/CD behavior through platform workflows
+# DO NOT EDIT workflow files directly - all behavior is configuration-driven
+#
+# Policy Resolution:
+# - compliance.policy_sets contains ONLY environment-level additions
+# - Bundle-required policies are resolved at runtime
+# - CLI merges: bundle_required ∪ env_additions
+
+version: 1.0.0
+schema_version: 1.0.0
+stack:
+  id: dc8ae1f5-0952-424d-8caa-415acf2e3c38
+  name: aws-soc2-non-prod
+  slug: aws-soc2-non-prod
+  workspace: soc2-iso27001
+bundle:
+  version: 1.0.0
+  template_bundle_id: technology-aws-modern-stack
+  generated_at: '2026-01-09T01:07:24.030402+00:00'
+  validation:
+    passed: false
+    errors_count: 1
+    warnings_count: 3
+    errors:
+    - 'units/network-baseline/variables.tf: Detected open CIDR 0.0.0.0/0'
+    warnings:
+    - 'units/network-baseline/variables.tf: Public access flag set to true'
+    - 'units/security-baseline/variables.tf: Public access flag set to true'
+    - 'units/monitoring-baseline/variables.tf: force_destroy enabled'
+infrastructure_units:
+- name: network-baseline
+  path: units/network-baseline
+  enabled: true
+  depends_on: []
+  order: 1
+- name: security-baseline
+  path: units/security-baseline
+  enabled: true
+  depends_on:
+  - network-baseline
+  order: 2
+- name: monitoring-baseline
+  path: units/monitoring-baseline
+  enabled: true
+  depends_on:
+  - network-baseline
+  - security-baseline
+  order: 3
+terraform:
+  version: latest
+  backend:
+    type: s3
+    bucket: iltero-storage
+    region: us-east-1
+    encrypt: true
+    kms_key_id: alias/iltero-terraform-state
+environments:
+  development:
+    name: Development
+    is_production: false
+    git_ref:
+      type: branch
+      name: develop
+    compliance:
+      enabled: true
+      policy_sets: []
+      scan_types:
+      - static
+      - evaluation
+      block_on_violations: true
+      frameworks: []
+    monitoring:
+      enabled: true
+      alert_channels: []
+      log_retention_days: 30
+      drift_detection:
+        enabled: true
+        schedule: 0 */4 * * *
+        auto_remediate: false
+      compliance_monitoring:
+        real_time: false
+        alert_on_violations: true
+    deployment:
+      require_approval: false
+      auto_apply_on_merge: false
+      timeout: 3600
+      max_parallel: 5
+      terraform_version: latest
+    security:
+      severity_threshold: high
+      vulnerability_scanning: true
+      secret_scanning: true
+      dependency_scanning: true
+      enforce_signed_commits: false
+    cloud:
+      provider: aws
+      region: us-east-1
+      role_arn: arn:aws:iam::396913727583:role/TerraformExecutionRole
+  staging:
+    name: Staging
+    is_production: false
+    git_ref:
+      type: branch
+      name: staging
+    compliance:
+      enabled: true
+      policy_sets: []
+      scan_types:
+      - static
+      - evaluation
+      block_on_violations: true
+      frameworks: []
+    monitoring:
+      enabled: true
+      alert_channels: []
+      log_retention_days: 30
+      drift_detection:
+        enabled: true
+        schedule: 0 */4 * * *
+        auto_remediate: false
+      compliance_monitoring:
+        real_time: false
+        alert_on_violations: true
+    deployment:
+      require_approval: false
+      auto_apply_on_merge: false
+      timeout: 3600
+      max_parallel: 5
+      terraform_version: latest
+    security:
+      severity_threshold: high
+      vulnerability_scanning: true
+      secret_scanning: true
+      dependency_scanning: true
+      enforce_signed_commits: false
+    cloud:
+      provider: aws
+      region: us-east-1
+      role_arn: arn:aws:iam::396913727583:role/TerraformExecutionRole
